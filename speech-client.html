@@ -1,0 +1,64 @@
+<!--
+  This web page provides a simple speech-to-spell interface.
+  When the user clicks a button and speaks, their voice is transcribed using the Web Speech API.
+  The transcribed text is then sent to a backend API (/detectSpell) to detect if it includes a known spell name.
+  Input: user's spoken sentence
+  Output: displayed recognized spell or error
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Speech to Spell</title>
+</head>
+<body>
+  <h2>Click the button and say something</h2>
+  <button id="start">Start Listening</button>
+  <p id="output">Waiting...</p>
+
+  <script type="module">
+    const output = document.getElementById("output"); // Element to display feedback
+    const startButton = document.getElementById("start"); // Button to trigger speech recognition
+
+    // Set up speech recognition, checking for browser compatibility
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      // Inform user if their browser does not support speech recognition
+      output.textContent = "Speech recognition not supported in this browser.";
+    } else {
+      const recognition = new SpeechRecognition(); // Create new recognition instance
+      recognition.lang = "en-US";                  // Set recognition language
+      recognition.interimResults = false;          // Only return final result
+      recognition.maxAlternatives = 1;             // Only return top option
+
+      // When the user clicks the button, start listening
+      startButton.addEventListener("click", () => {
+        output.textContent = "Listening...";
+        recognition.start();
+      });
+
+      // Once speech is recognized, send it to the server
+      recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript; // Get spoken sentence
+        output.textContent = `You said: "${transcript}"`;
+
+        try {
+          // Send the transcript to the server for spell detection
+          const response = await fetch("http://localhost:3000/detectSpell", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ input: transcript })
+          });
+
+          const data = await response.json();
+          output.textContent += `\nGemini response: ${data.result}`; // Display result
+        } catch (err) {
+          output.textContent += `\nError: ${err.message}`; // Display error
+        }
+      };
+    }
+  </script>
+</body>
+</html>
