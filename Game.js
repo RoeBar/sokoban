@@ -10,6 +10,35 @@ export class LevelLogic {
         this.mana= mana;
         this.manaDisplay=new Objects.ManaDisp(mana);
         this.projectiles = []; // a list of projectiles
+
+        // init worker as a thread that runs client.js
+        this.worker = new Worker("client.js"); // create a new worker
+        // make the worker listen for messages
+        this.worker.onmessage = (event) => {
+            if (event.data === "listen") {
+                if (SpeechRecognition) {
+                    recognition.start(); // Start speech recognition
+                    console.log("Speech recognition started.");
+                } else {
+                    console.log("Speech recognition not supported in this browser.");
+                }
+            }
+        }
+        // listen for messages from the worker
+        window.onmessage = (event) => {
+            if (event.data && event.data.spell) {
+                const spell = event.data.spell.toLowerCase(); // get the spell from the message
+                if (spell === "fireball") {
+                    this.castSpell("fireball", this.board.playerDirX, this.board.playerDirY); // cast fireball spell
+                } else if (spell === "rage") {
+                    this.castSpell("Enraged"); // cast rage spell
+                } else {
+                    console.error("Unknown spell:", spell); // unknown spell
+                }
+            } else if (event.data && event.data.error) {
+                console.error("Error from worker:", event.data.error); // error from worker
+            }
+        }
     }
 
     addKeyboardListener() {
@@ -22,6 +51,7 @@ export class LevelLogic {
                 case 'd': this.board.movePlayer(1, 0); break;
                 case 'f': this.castSpell("fireball", this.board.playerDirX, this.board.playerDirY); break; // cast fireball spell
                 case 'e': this.castSpell("Enraged"); break; // cast fireball spell
+                case 'k': this.worker.postMessage({ type: "listen" }); break; // start listening for spells
             }
         });
     }
@@ -379,28 +409,3 @@ export class GameBoard {
     }
 
 }
-
-// init the game
-// const boardSize = 10; // size of the board
-// const cellSize = Math.min(window.innerWidth, window.innerHeight) / boardSize;
-// let lvLogic = new LevelLogic(boardSize, cellSize, 20);// Mana=20
-// lvLogic.addKeyboardListener(); // add the keyboard listener to the logic class
-
-// lvLogic.board.addObject("wall", 9, 2); 
-// lvLogic.board.addObject("wall", 7, 2); 
-// lvLogic.board.addObject("wall", 7, 1); 
-// lvLogic.board.addObject("wall", 9, 1); 
-// lvLogic.board.addObject("wall", 7, 0); 
-// lvLogic.board.addObject("wall", 9, 0);
-// lvLogic.board.addObject("buttonAndDoor", 8, 2,0,0, 9,5);
-
-// lvLogic.board.addObject("buttonAndDoor", 4, 2,0,0, 7,5);
-
-// lvLogic.board.addObject("metal_box", 8, 3); 
-
-// lvLogic.board.addObject("wall", 4, 4); 
-// lvLogic.board.addObject("wooden_box", 3, 2);
-// lvLogic.board.addObject("wooden_box", 5, 2); 
-// lvLogic.board.addObject("wooden_box", 7, 7); 
-// lvLogic.board.addObject("metal_box", 2, 2); 
-// lvLogic.board.addObject("wall", 6, 2); 

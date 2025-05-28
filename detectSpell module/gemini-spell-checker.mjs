@@ -57,5 +57,6 @@ Output: { "spell": null }`
 export async function detectSpell(userInput) {
   const result = await chat.sendMessage(userInput); // send the user sentence to the Gemini chat
   const response = result.response; // extract the response object
+  console.log(response.text());
   return response.text(); // return the raw JSON string
 }
