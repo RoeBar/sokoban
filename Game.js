@@ -3,7 +3,7 @@ import * as Objects from "./objects.js"; // import the objects from the objects.
 /* a class to handle the logic of the game,
     such as the board and events
 */
-class LevelLogic {
+export class LevelLogic { 
     constructor(boardSize, cellSize, mana) {
         this.board = new GameBoard(boardSize, cellSize, mana);
         this.board.createGrid();
@@ -55,7 +55,7 @@ class LevelLogic {
 }
 
 // a class that handles board management
-class GameBoard {
+export class GameBoard {
     constructor(boardSize, cellSize) {
 
         this.boardSize = boardSize;
@@ -404,5 +404,3 @@ class GameBoard {
 // lvLogic.board.addObject("wooden_box", 7, 7); 
 // lvLogic.board.addObject("metal_box", 2, 2); 
 // lvLogic.board.addObject("wall", 6, 2); 
-
-export {GameBoard,LevelLogic}
