@@ -6,9 +6,15 @@ A simple app that listens to the user's voice, transcribes it, and uses Google G
 ------------------------------------------------------------------------------------------------------------------------------------------------
 ##  Dependencies
 
-Before running the project, install the following packages using `npm`:
-
-npm install express cors dotenv @google/generative-ai mime
+Before running the project, install the following:
+1.downlord live server in vs code
+2.downlod node js // need at least v18 so gemini api can work
+3.make sure .env not text file.
+4.in cmd do "cd *folder*".
+then:
+5. npm init -y
+6. npm install express cors dotenv @google/generative-ai
+7. npm install -D nodemon live-server
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 ### File Overview
