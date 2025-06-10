@@ -4,12 +4,14 @@ import * as Objects from "./objects.js"; // import the objects from the objects.
     such as the board and events
 */
 export class LevelLogic { 
-    constructor(boardSize, cellSize, mana) {
+    constructor(boardSize, cellSize, mana, webWorker= null) {
         this.board = new GameBoard(boardSize, cellSize, mana);
         this.board.createGrid();
         this.mana= mana;
         this.manaDisplay=new Objects.ManaDisp(mana);
         this.projectiles = []; // a list of projectiles
+        this.webWorker = webWorker; // web worker for spell detection
+        this.isSpellCasting = false; // flag to check if the player is casting a spell
     }
 
     addKeyboardListener() {
@@ -22,11 +24,16 @@ export class LevelLogic {
                 case 'd': this.board.movePlayer(1, 0); break;
                 case 'f': this.castSpell("fireball", this.board.playerDirX, this.board.playerDirY); break; // cast fireball spell
                 case 'e': this.castSpell("Enraged"); break; // cast fireball spell
+                // if the player presses 'k', send a message to the web worker to detect the spell
+                case 'k': this.webWorker.postMessage({ msg: "castSpell" }); console.log("detected k"); break; // cast spell
             }
         });
     }
 
     castSpell(command, dirX=0, dirY=0) {
+        if (command === "rage") {
+            command = "Enraged"; // normalize the command to "Enraged"
+        }
         switch (command) {
             case "fireball": 
                 const fireballCost=3;

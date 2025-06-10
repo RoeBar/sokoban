@@ -2,10 +2,39 @@ import * as Objects from "./objects.js"; // import the objects from the objects.
 
 import * as Game from "./Game.js"; // import the game class
 
+const Worker = window.Worker || window.MozWorker || window.webkitWorker; // check for worker support
+if (!Worker) {
+    console.error("Your browser does not support web workers.");
+}
+
 // init the game
 const boardSize = 10; // size of the board
 const cellSize = Math.min(window.innerWidth, window.innerHeight) / boardSize;
-let lvLogic = new Game.LevelLogic(boardSize, cellSize, 20);// Mana=20
+
+// open another thread to handle server communication
+const worker = new Worker("./worker.js"); // create a new web worker
+
+// init the game manager
+let lvLogic = new Game.LevelLogic(boardSize, cellSize, 20, worker); // Mana=20
+
+// listen for messages from the web worker
+lvLogic.webWorker.addEventListener("message", (event) => {
+    const data = event.data; // get the data from the event
+
+    const regex_pattern = "\\{\\s*\"spell\":\\s*\"([a-zA-Z]+)\"\\s*\\}"; // regex pattern to match the spell JSON format
+    const regex = new RegExp(regex_pattern);
+    const spellMatch = data.match(regex); // match the data against the regex pattern
+
+    if (spellMatch) {
+        const spell = spellMatch[1]; // get the spell from the match
+        console.log("Spell detected:", spell); // log the detected spell
+        lvLogic.castSpell(spell, lvLogic.board.playerDirX, lvLogic.board.playerDirY); // cast the spell in the game logic
+        lvLogic.isSpellCasting = false
+    } else {
+        console.log("No valid spell detected in the message.");
+    }
+});
+
 lvLogic.addKeyboardListener(); // add the keyboard listener to the logic class
 
 lvLogic.board.addObject("wall", 9, 2); 
