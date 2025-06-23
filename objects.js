@@ -5,7 +5,8 @@ class GameObject {
         this.x = x; // x position of the object
         this.y = y; // y position of the object
         this.element = document.createElement("div"); // create a new div for the object
-        this.element.classList.add(type); // add the type as a class
+        this.element.classList.add("game-object"); // All game objects will have 'game-object' class
+        this.element.classList.add(type); //, add the type as a class
         this.element.style.position = "absolute"; // set the position to absolute
         document.body.appendChild(this.element); // append the element to the body
         this.img = document.createElement("img");
@@ -45,13 +46,13 @@ export class ManaDisp {
             document.body.appendChild(ManaDisp.scoreElement);
         }
 
-        ManaDisp.scoreElement.textContent = `Mana: ${initialMana}`; // Show initial score
+        ManaDisp.scoreElement.textContent = `Current Mana: ${initialMana}`; // Show initial score
     }
 
     // Update the visual display
     static updateScoreDisplay(mana) {
         if (ManaDisp.scoreElement) {
-            ManaDisp.scoreElement.textContent = `Mana: ${mana}`;
+            ManaDisp.scoreElement.textContent = `Current Mana: ${mana}`;
         } else {
             console.error("Mana display element not initialized.");
         }
@@ -81,7 +82,7 @@ class Tile extends GameObject {
     }
 }
 
-export class Pushable extends Tile {
+export class Pushable extends Tile { 
     constructor(id, x, y, type, cellSize, weight) {
         super(id, type, x, y, cellSize); // call the parent constructor
         this.weight = weight; // weight changes what you need to push the object
@@ -96,12 +97,17 @@ export class Button extends Standable {
         this.pairNumber=pairNumber;
 
         this.img.style.transform = "scale(1)";
-        this.img.src = "images/button_ph.jpg";
         this.element.style.width = cellSize + "px";
         this.element.style.height = cellSize + "px";
         this.element.style.position = "absolute";
+        this.determineButtonSprite();
+    }
+    determineButtonSprite(){
+        const num= (this.pairNumber-1)%6+1 //mapping to 1-6
+        this.img.src ="images/ButtenSet" + num + ".png";
     }
 }
+
 
 export class Door extends GameObject {
     constructor(id, x, y, cellSize, pairNumber) {
@@ -111,22 +117,40 @@ export class Door extends GameObject {
         this.open=false;
 
         this.img.style.transform = "scale(1)";
-        this.updateDoorSprite();
         this.element.style.width = cellSize + "px";
         this.element.style.height = cellSize + "px";
         this.element.style.position = "absolute";
         this.element.style.pointerEvents = "none";
+        this.opnImg="";
+        this.clsImg="";
+        this.determineDoorSprite()
+        this.updateDoorSprite();
+
+    }
+    determineDoorSprite(){
+        const num= (this.pairNumber-1)%6+1 //mapping to 1-6
+        this.opnImg= this.img.src = "images/DorOpenSet" + num + ".png";
+        this.clsImg= this.img.src = "images/DorClosedSet" + num + ".png";
     }
     updateDoorSprite(){
         if(this.open){
-            this.img.src = "images/open_door.png";
+            this.img.src = this.opnImg;
         }
         else {
-            this.img.src = "images/closed_door.png";
+            this.img.src = this.clsImg;
         }
     }
 }
 
+export class Flag extends Tile {
+    constructor(id, x, y, cellSize) {
+        super(id, "flag", x, y, cellSize); // call the parent constructor
+        this.element.style.backgroundImage = 'url("images/flag.png")'; // set the background image
+        this.element.style.backgroundSize = "contain";  // or "cover"
+        this.element.style.backgroundRepeat = "no-repeat";
+        this.element.style.backgroundPosition = "center";
+    }
+}
 
 export class Wall extends Tile {
     constructor(id, x, y, cellSize) {
@@ -140,7 +164,7 @@ export class Wall extends Tile {
 
 
 export class WoodenBox extends Pushable {
-    constructor(id, x, y, cellSize) {
+    constructor(id, x, y, cellSize) { 
         super(id, x, y,"wood_box", cellSize, 0); // call the parent constructor
         this.img.src = "images/wooden_box.png"; // set the background image
     }

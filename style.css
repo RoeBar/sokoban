@@ -1,5 +1,12 @@
 body {
   background-color: #1c1c1c;
+  background-image: url('images/bg1.png'); 
+  background-size: cover; 
+  background-position: center center;
+  background-repeat: no-repeat; 
+  background-attachment: fixed;
+  margin: auto;                   
+  padding: 0; 
 }
 
 .circle {
@@ -45,6 +52,7 @@ body {
   border: 1px solid #fff;  /* White border for better contrast */
   position: absolute;
   z-index: 0;
+  background-image: url("images/Tile2.png");
 }
 
 
@@ -52,7 +60,20 @@ body {
   background-color: none;
   position: absolute;
   z-index: 2;
+  background-image: url("images/wall3.png");
 }
+.wood_box {
+  background-color: none; 
+  position: absolute;
+  z-index: 4;
+}
+.metal_box{
+  background-color: none;
+  position: absolute;
+  z-index: 4;
+}
+
+
 
 .pushable {
   background-color: #d12b1f;
@@ -73,22 +94,244 @@ body {
 
 .score {
   font-size: 240px;
-  color: white; 
+  color: #f3f1f1;
+  -webkit-text-stroke: 2px black;
   font-weight: bold;
   text-align: center;
   margin: 20px;
   position: absolute;
-  top: 20%;
-  left: 85%;
+  top: 44%;
+  left: 70%;
+  font-family: "Metal Mania", cursive;
+  font-weight: 400;
+  font-style: normal;
 }
 
 
 .btn {
+  position: absolute;  
   font-size: 80px;
+  border-radius: 50px;
+  font-family: "Metal Mania", cursive;
+  font-weight: 400;
+  -webkit-text-stroke: 2px black;
+  border: 3px solid rgb(58, 2, 2);
+  text-shadow: 0 0 4px black;
+  color: #6f1620;
+  text-align: center;
+  background-color:  #d3c7c7;
+  height: 250px;
+  width: 350px;
+}
+.menu-btn {
+  font-size: 170px;
   color: black; 
   font-weight: bold;
   text-align: center;
   position: absolute;   
-  padding : 40px 40px; 
+  padding : 60px 60px; 
   border-radius: 50px;
+  left: 45%;
+
+  font-family: "Metal Mania", cursive;
+  font-weight: 400;
+  -webkit-text-stroke: 4px black;
+  text-shadow: 0 0 4px black;
+  color: #943742;
+  text-align: center;
+  background-color:  #d3c7c7;
+}
+
+.game-title {
+  font-family: 'FantasyFont', cursive;
+  font-size: 450px;
+  margin-top: 500px;
+  position :fixed;
+  top: 4%;
+  left: 37%;
+
+  font-family: "Metal Mania", cursive;
+  font-weight: 400;
+  -webkit-text-stroke: 4px black;
+  text-shadow: 0 0 4px black;
+  color: #943742;
+  text-align: center;
+}
+
+.level-selector {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  gap: 80px;
+  padding-top: 200px;
+  padding-right: 700px;
+}
+.button-wrapper {
+    display: flex; 
+    align-items: center; 
+    gap: 3px; 
+    margin-bottom: 20px; 
+}
+.level-selector .btn {
+  position: static;
+  height: 400px;
+  width: 500px;
+  font-size: 220px;
+  font-family: "Papyrous", fantasy;
+  font-weight: normal;
+  background-color: #690e18;
+  color: #b19e9e;
+  border: 4px solid white;
+  text-shadow: 0 0 4px white;
+}
+.arrow {
+    font-size: 300px;
+    color: #ffffff; 
+    -webkit-text-stroke: 2px black;
+    text-shadow: 0 0 4px white;
+    font-weight: bold; 
+    margin-left: 3px; 
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.levelPopup{
+    position : absolute;
+    top : 50%;
+    left : 50%;
+    background : #49060e;
+    padding : 20px;
+    z-index: 1000;
+    height: 1050px;
+    width: 1050px;
+    transform : translate(-50%, -50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;   
+    justify-content: center;
+    gap: 65px;   
+}
+
+.levelPopup .popup-button {
+  height: 25%;
+  width: 74%; 
+  font-size : 160px;
+  font-family: "Metal Mania", cursive;
+  font-weight: 400;
+  -webkit-text-stroke: 2px black;
+  border: 4px solid black;
+  text-shadow: 0 0 4px black;
+  color: #6f1620;
+  text-align: center;
+  position: static;
+  background-color:  #d3c7c7;
+}
+
+.gif{
+    background-image: url('images/evilWizard2.gif');
+    background-size: cover; 
+    background-repeat: no-repeat;
+    background-position: center center;
+    position :fixed;
+    top: 48%;
+    left: 90%;
+    height: 500px;
+    width: 500px;
+    display: block;            
+    margin: 0;                   
+    padding: 0;                
+    border: none;               
+}
+
+.book-container{
+    background-image: url('images/book2.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    position :fixed;
+    top: 40%;
+    left: 66%;
+    height: 2200px;
+    width: 2200px;
+    display: block;            
+    margin: 0;                   
+    padding: 0;                
+    border: none;               
+}
+.book-wizard {
+    position: absolute;
+    top: 36%;
+    left: 60%;
+    width: 24%;
+    height: 24%;
+    object-fit: contain;
+    margin: 10px 0;
+}
+.book-fireball {
+    transform: scaleX(-1);
+    position: absolute;
+    top: 35%;
+    left: 18%;
+    width: 24%;
+    height: 24%;
+    object-fit: contain;
+    margin: 10px 0;
+}
+
+.book-label {
+    font-family: "Metal Mania", cursive;
+    font-weight: 400;
+    font-style: normal;
+    -webkit-text-stroke: 2px black;
+    text-shadow: 0 0 4px white;
+    color: #333;
+    text-align: center;
+    position: absolute;
+}
+
+.label-fireball {
+    top: 27%;
+    left: 17%;
+    font-size: 200px;
+}
+
+.label-enraged {
+    top: 27%;
+    left: 58%;
+    font-size: 200px;
+}
+
+.label-fireball-cost {
+    top: 60%;
+    left: 19%;
+    font-size: 150px;
+}
+
+.label-enraged-cost {
+    top: 60%;
+    left: 61%;
+    font-size: 150px;
+}
+
+
+.level-selector-title {
+  font-family: 'FantasyFont', cursive;
+  font-size: 440px;
+  margin-top: 500px;
+  position :fixed;
+  top: 8%;
+  left: 43%;
+
+  font-family: "Metal Mania", cursive;
+  font-weight: 400;
+  -webkit-text-stroke: 4px black;
+  text-shadow: 0 0 4px black;
+  color: #943742;
+  text-align: center;
 }

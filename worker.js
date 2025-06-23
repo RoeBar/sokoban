@@ -1,4 +1,4 @@
-importScripts("./client.mjs"); // import the Client class from client
+importScripts("./client.js"); // import the Client class from client
 // create a client instance
 let client = new Client();
 // worker.js - Web Worker for processing spells
