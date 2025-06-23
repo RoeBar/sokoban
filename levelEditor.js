@@ -1,29 +1,35 @@
 import * as Game from "./Game.js"; // import the objects from the objects.js file
 import * as Objects from "./objects.js"; // import the objects from the objects.js file
+import { devLevels } from './dev_levels.js';
+import { initWorker } from "./modules.js"; // import the initWorker function to initialize the web worker
+
+let worker = null; // Declare worker variable
 
 class LevelEditorLogic {
-    constructor(options) {
-        switch (options.length) {
+    constructor(...args) {
+        worker = initWorker("./worker.js"); // Initialize the worker
+        switch (args.length) {
             // in this case, we create the default board
             case 3:
-                this.defaultConstructor(arguments[0], arguments[1], arguments[2]);
+                this.defaultConstructor(args[0], args[1], args[2], worker);
                 break;
             // in this case, we create the board from a json file which we get the data from
             case 1:
-                this.fromJson(options)
+                this.levelJsonString= args[0]
+                this.fromJson();
                 break;
             default:
                 console.error("Invalid number of arguments for LevelEditorLogic constructor.");
                 break;
         }
     }
-    // add
+
     
-    defaultConstructor(boardSize, cellSize, initialMana) {
+    defaultConstructor(boardSize, cellSize, initialMana, worker) {
         this.initialMana=initialMana;
         this.levelEditorActive=true;
         this.deleteMode = false;
-        this.levelLogic= new Game.LevelLogic(boardSize, cellSize, initialMana);
+        this.levelLogic= new Game.LevelLogic(boardSize, cellSize, initialMana, true, worker); // Create a new LevelLogic instance
         this.levelLogic.board.boardActive=false;
 
         this.waitingForDoorClick = false;
@@ -35,7 +41,9 @@ class LevelEditorLogic {
         
         this.choosePlayerLocation = false;
         window.lvLogic = this.levelLogic;
-        this.editorScriptLines = [];
+
+        this.objectsList =[]
+        this.updateLevelJsonString(); 
 
         this.levelLogic.addKeyboardListener();
         this.createGrid();
@@ -43,67 +51,71 @@ class LevelEditorLogic {
         this.handleGridClicks()
     }
 
+
     // this function is called when we want to load a level from a json file
-    fromJson(jsonData) {
-        // parse the json data and create the level logic object
-        this.levelLogic = new Game.LevelLogic(jsonData.boardSize, jsonData.cellSize, jsonData.initialMana);
-        this.levelLogic.board.boardActive=false;
-        this.levelLogic.board.clearboard();
-        this.levelLogic.mana = jsonData.initialMana;
-        this.initialMana=jsonData.initialMana;
-        this.playerInitialX=jsonData.playerInitialX;
-        this.playerInitialY=jsonData.playerInitialY;
-        this.levelLogic.board.teleportPlayer(this.playerInitialX,this.playerInitialY);
-        this.levelEditorActive=true;
+    fromJson() {
+        // Clean up existing elements
+        document.querySelectorAll('.grid').forEach(el => el.remove());
+
+        // Create grid before adding objects
+        this.createGrid();
+        this.levelLogic= Game.loadLevelFromJson(this.levelJsonString, worker, true); // Load level from JSON string
+        const jsonData = JSON.parse(this.levelJsonString);
+        this.initialMana = jsonData.initialMana;
+        this.playerInitialX = jsonData.playerInitialX;
+        this.playerInitialY = jsonData.playerInitialY;
+        this.objects= jsonData.objectsList;
+
+        Objects.ManaDisp.updateScoreDisplay(this.initialMana);
+        
+        // Reset editor state
+        this.levelEditorActive = true;
         this.deleteMode = false;
         this.waitingForDoorClick = false;
         this.tempButtonX = -1;
         this.tempButtonY = -1;
         this.choosePlayerLocation = false;
-        this.editorScriptLines = [];
+
+        this.handleGridClicks();
+        
+        // Ensure board is inactive
         this.levelLogic.addKeyboardListener();
-        // now iterate over the objects in the json data and add them to the board
-        for (let i = 0; i < jsonData.objects.length; i++) {
-            let obj = jsonData.objects[i];
-            if (obj.isBackLayer) {
-                this.levelLogic.board.addObject(obj.type, obj.x, obj.y, 0, 0, obj.doorX, obj.doorY);
-            } 
-            else {
-                this.levelLogic.board.addObject(obj.type, obj.x, obj.y);
-            }
+        this.levelLogic.board.boardActive = false;
+    }
+
+    getSerializableState() {
+    return {
+        boardSize: this.levelLogic.board.boardSize,
+        cellSize: this.levelLogic.board.cellSize,
+        initialMana: this.initialMana,
+        playerInitialX: this.playerInitialX,
+        playerInitialY: this.playerInitialY,
+        objectsList: this.objectsList
+    };
+}
+    addObjectToList(type, x, y,doorX=0,doorY=0) {
+        this.objectsList.push({
+        type: type,
+        x: x,
+        y: y,
+        doorX: doorX,
+        doorY: doorY,
+    });
+    }
+    deleteObjectFromList(type, x, y) { 
+        // Find the index of the object to remove by type, x, and y
+        const indexToDelete = this.objectsList.findIndex(obj => obj.type === type && obj.x === x && obj.y === y);
+        if (indexToDelete !== -1) {
+            this.objectsList.splice(indexToDelete, 1); // Remove 1 element at this index
         }
-        // now create the grid and add the buttons
-        this.createGrid();
-        this.addButtons();
-        this.handleGridClicks()
+    }
+    updateLevelJsonString() {
+    this.levelJsonString = JSON.stringify(this.getSerializableState(), null, 2);
     }
 
     exportLevelScript() {
         // create json object to store the level data
-        let levelData = {
-            boardSize: this.levelLogic.board.boardSize,
-            playerInitialX: this.playerInitialX,
-            playerInitialY: this.playerInitialY,
-            initialMana: this.initialMana,
-            objects: []
-        };
-        // such as walls, boxes, and the player
-        for (let [key, value] of Object.entries(this.levelLogic.board.frontBoardState)) {
-            if (value != 0) {
-                levelData.objects.push({ type: value, x: key % this.levelLogic.board.boardSize, y: Math.floor(key / this.levelLogic.board.boardSize) });
-            }
-        }
-        // the backBoardState stores the objects in the back layer of the board, doors
-        for (let [key, value] of Object.entries(this.levelLogic.board.backBoardState)) {
-            if (value != 0) {
-                levelData.objects.push({ type: value, x: key % this.levelLogic.board.boardSize, y: Math.floor(key / this.levelLogic.board.boardSize), isBackLayer: true });
-            }
-        }
-        // now save the level data to a json file 
-        // TODO: implement this
-        // for now, just print the level data to the console
-        const script = this.editorScriptLines.join("\n");
-        console.log(script); // or copy to clipboard / download
+        console.log(this.levelJsonString);
     }
     
     createGrid() {
@@ -153,6 +165,7 @@ class LevelEditorLogic {
             else if (this.deleteMode) {
                 this.levelLogic.board.removeObject(this.levelLogic.board.frontBoardState[index], 0);
                 this.levelLogic.board.removeObject(this.levelLogic.board.backBoardState[index], 1);
+                this.deleteObjectFromList(this.itemSelector.selectedObjectType,x, y);
             }
             else {
                 if(!this.itemSelector.selectedObjectType) return;
@@ -167,15 +180,16 @@ class LevelEditorLogic {
                     } else {
                         // Second click: use current x, y as door, and place the buttonAndDoor
                         this.levelLogic.board.addObject("buttonAndDoor", this.tempButtonX, this.tempButtonY, 0, 0, x, y);
-                        this.editorScriptLines.push(`lvLogic.board.addObject("buttonAndDoor", ${this.tempButtonX}, ${this.tempButtonY}, 0, 0, ${x}, ${y});`);
+                        this.addObjectToList("buttonAndDoor",this.tempButtonX,this.tempButtonY,x,y)
                         this.waitingForDoorClick = false;
                     }
                 } 
                 else {
                     this.levelLogic.board.addObject(this.itemSelector.selectedObjectType, x, y);
-                    this.editorScriptLines.push(`lvLogic.board.addObject("${this.itemSelector.selectedObjectType}", ${x}, ${y});`);
+                    this.addObjectToList(this.itemSelector.selectedObjectType,x,y)
                 }
             }
+            this.updateLevelJsonString();
             });
         });
     }
@@ -189,6 +203,8 @@ class LevelEditorLogic {
         this.addDeleteButton();
         this.addManaInput();
         this.addChoosePlayerLocationButton();
+        this.addLevelSelector();
+        this.addMenuButton();
     }
 
     addExportButton() {
@@ -239,17 +255,12 @@ class LevelEditorLogic {
         button.classList.add('btn');
         button.style.top = "40%";
         button.style.left = "17%";
-        button.addEventListener("click", () => {
-            this.levelLogic.board.clearboard();
-            const script = this.editorScriptLines.join("\n");
-            eval(script);
-
-            this.levelLogic.mana = this.initialMana;
-            Objects.ManaDisp.updateScoreDisplay(this.initialMana);
-            this.levelLogic.board.teleportPlayer(this.playerInitialX,this.playerInitialY);
-
-            this.levelLogic.board.boardActive= false;
-            this.levelEditorActive=true;
+        button.addEventListener("click", () => {    
+        // Reset editor state before reloading
+        this.levelEditorActive = true;
+        this.levelLogic.board.boardActive = false;
+        // Reinitialize from JSON
+        this.fromJson();
         });
         document.body.appendChild(button);
     }
@@ -273,8 +284,9 @@ class LevelEditorLogic {
         const button = document.createElement("button");
         button.textContent = "Choose player location";
         button.classList.add('btn');
-        button.style.top = "4%";
-        button.style.left = "7%";
+        button.style.top = "3%";
+        button.style.left = "10%";
+        button.style.width="600px";
     
         button.addEventListener("click", () => {
             if (!this.levelEditorActive) return;
@@ -315,6 +327,7 @@ class LevelEditorLogic {
             this.levelLogic.mana = input.value;
             this.initialMana= input.value;
             Objects.ManaDisp.updateScoreDisplay(input.value);
+            this.updateLevelJsonString();
         });
 
         // Add all elements to the container
@@ -324,7 +337,94 @@ class LevelEditorLogic {
 
         // Add the container to the body
         document.body.appendChild(container);
+    }
+    addMenuButton() {
+        const button = document.createElement("button");
+        button.textContent = "Menu";
+        button.classList.add('menu-btn');
+        button.style.position= "absolute";
+        button.style.padding ="20px 30px";
+        button.style.top = "1%";
+        button.style.left = "1%";
+        button.style.height="300px";
+        button.style.width="550px";
+        button.style.fontSize="195px";
+        button.addEventListener("click", () => {    
+            window.location.href = 'index.html';
+        });
+        document.body.appendChild(button);
+    }
+    addLevelSelector() {
+        const container = document.createElement("div");
+        container.id = "level-selector-container"; 
+        container.style.position = "fixed";
+        container.style.top = "70%"; 
+        container.style.left = "10%"; 
+        container.style.zIndex = "1000";
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.gap = "10px"; // Space between elements
+        container.style.height="600px";
+        container.style.width="600px";
 
+        const label = document.createElement("label");
+        label.textContent = "Load Dev Level:";
+        label.style.fontSize = "100px";
+        label.style.color = "white";
+        label.style.height="100px";
+        label.style.width="800px";
+        container.appendChild(label);
+
+        const select = document.createElement("select");
+        select.id = "level-select";
+        select.style.height="100px";
+        select.style.width="1200px";
+        select.style.fontSize = "80px";
+        select.style.padding = "5px";
+        select.style.textAlign = "center";
+
+        container.appendChild(select);
+
+        // Populate the dropdown with levels from devLevels
+        for (let i = 1; i <= 20; i++) {
+            const levelKey = `level_${i}`;
+            if (devLevels[levelKey]) { // Only add if the level data exists
+                const option = document.createElement("option");
+                option.value = levelKey;
+                option.textContent = `Level ${i}`;
+                select.appendChild(option);
+            }
+        }
+
+        const loadButton = document.createElement("button");
+        loadButton.textContent = "Load Selected Level";
+        loadButton.classList.add('btn');
+        loadButton.style.top = "50%"; 
+        loadButton.style.fontSize = "80px";
+        loadButton.style.height="200px";
+        loadButton.style.width="1000px";
+        loadButton.style.padding = "10px 15px";
+        loadButton.addEventListener("click", () => {
+            if (!this.levelEditorActive) return; // Only load if editor is active
+            const levelJsonString = devLevels[select.value];
+
+            if (levelJsonString) {
+                try {
+                    // Call fromJson to load the level
+                    this.levelJsonString = levelJsonString; // Set the string for fromJson
+                    this.fromJson();
+                    console.log(`Successfully loaded level:`);
+                } catch (error) {
+                    console.error(`Error parsing JSON for level`, error);
+                    // You might want a more user-friendly error display here
+                }
+            } else {
+                console.warn(`No data found for level`);
+            }
+        });
+        container.appendChild(loadButton);
+
+        document.body.appendChild(container);
     }
     
     
@@ -333,7 +433,7 @@ class itemSelector {
     constructor() {
         this.selectedObjectType = null;
 
-        const objectTypes = ["wall", "wooden_box", "metal_box", "buttonAndDoor"];
+        const objectTypes = ["wall", "wooden_box", "metal_box", "buttonAndDoor","flag"];
         const container = document.createElement("div");
         container.id = "object-picker";
         container.style.position = "fixed";
@@ -346,7 +446,7 @@ class itemSelector {
             btn.textContent = type;
             btn.setAttribute("data-type", type);
             btn.style.fontSize = "65px";      // Bigger text
-            btn.style.padding = "72px 72px"; // Bigger button area (vertical 10px, horizontal 20px)
+            btn.style.padding = "50px 50px"; // Bigger button area (vertical 10px, horizontal 20px)
             btn.style.margin = "10px";        // More space between buttons
             container.appendChild(btn);
 
@@ -357,6 +457,7 @@ class itemSelector {
         document.body.appendChild(container);
     }
 }
+
 
 
 const boardSize = 10; // size of the board

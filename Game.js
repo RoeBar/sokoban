@@ -1,33 +1,84 @@
 import * as Objects from "./objects.js"; // import the objects from the objects.js file
 
+const WIZARD_IMAGES = [{ base: "images/wizard.png",side: "images/wizard_side.png", up: "images/wizard_up.png"},
+                        { base: "images/enraged_wizard.png",side: "images/enraged_wizard_side.png", up: "images/enraged_wizard_up.png"}];
+
+
+// this function is called when we want to load a level from a json string
+export function loadLevelFromJson(levelJsonString, worker, isEditor = false) {
+    if (!worker) {
+        console.error("Worker is not initialized in loadLevelFromJson.");
+        return;
+    }
+    const jsonData = JSON.parse(levelJsonString);
+    document.querySelectorAll('.grid').forEach(el => el.remove());
+    GameBoard.clearBoard();
+    // level logic
+    const levelLogic = new LevelLogic(jsonData.boardSize, jsonData.cellSize, jsonData.initialMana, isEditor, worker);
+
+    levelLogic.mana = jsonData.initialMana;
+    levelLogic.playerInitialX = jsonData.playerInitialX;
+    levelLogic.playerInitialY = jsonData.playerInitialY;
+    levelLogic.board.teleportPlayer(levelLogic.playerInitialX ,levelLogic.playerInitialY);
+
+    // Add objects from JSON
+    for (let i = 0; i < jsonData.objectsList.length; i++) {
+        let obj = jsonData.objectsList[i];
+        levelLogic.board.addObject(obj.type, obj.x, obj.y, 0, 0, obj.doorX, obj.doorY);
+    }
+    return levelLogic;
+}
+
+
+
 /* a class to handle the logic of the game,
     such as the board and events
 */
-export class LevelLogic { 
-    constructor(boardSize, cellSize, mana, webWorker= null) {
-        this.board = new GameBoard(boardSize, cellSize, mana);
+class LevelLogic {
+    constructor(boardSize, cellSize, mana, Editor=false, worker) {
+        this.board = new GameBoard(boardSize, cellSize, Editor);
+        this.board.parentLogic = this;
         this.board.createGrid();
         this.mana= mana;
         this.manaDisplay=new Objects.ManaDisp(mana);
         this.projectiles = []; // a list of projectiles
-        this.webWorker = webWorker; // web worker for spell detection
-        this.isSpellCasting = false; // flag to check if the player is casting a spell
+        this.onLevelComplete = null;
+        this.keyboardHandler = this.handleKeyDown.bind(this);
+
+        this.isSpellCasting= false;
+        this.webWorker= worker; // web worker for spell detection
+    }
+
+    handleKeyDown(event) {
+        if (!this.board.boardActive) return; // check if the board is active
+        switch (event.key.toLowerCase()) {
+            case 'w': this.board.movePlayer(0, -1); break;
+            case 's': this.board.movePlayer(0, 1); break;
+            case 'a': this.board.movePlayer(-1, 0); break;
+            case 'd': this.board.movePlayer(1, 0); break;
+            case 'f': this.castSpell("fireball", this.board.playerDirX, this.board.playerDirY); break; // cast fireball spell
+            case 'e': this.castSpell("Enraged"); break; // cast fireball spell
+            // if the player presses 'k', send a message to the web worker to detect the spell
+            case 'k': this.webWorker.postMessage({ msg: "castSpell" }); console.log("detected k"); break; // cast spell
+        }
     }
 
     addKeyboardListener() {
-        document.addEventListener('keydown', (event) => {
-            if (!this.board.boardActive) return; // check if the board is active
-            switch (event.key.toLowerCase()) {
-                case 'w': this.board.movePlayer(0, -1); break;
-                case 's': this.board.movePlayer(0, 1); break;
-                case 'a': this.board.movePlayer(-1, 0); break;
-                case 'd': this.board.movePlayer(1, 0); break;
-                case 'f': this.castSpell("fireball", this.board.playerDirX, this.board.playerDirY); break; // cast fireball spell
-                case 'e': this.castSpell("Enraged"); break; // cast fireball spell
-                // if the player presses 'k', send a message to the web worker to detect the spell
-                case 'k': this.webWorker.postMessage({ msg: "castSpell" }); console.log("detected k"); break; // cast spell
-            }
-        });
+        document.addEventListener('keydown', this.keyboardHandler);
+    }
+
+    removeListeners() {
+        // Remove keyboard listener if present
+        if (this.keyboardHandler) {
+            document.removeEventListener('keydown', this.keyboardHandler);
+            this.keyboardHandler = null;
+        }
+
+        // Remove web worker message listener if present
+        if (this.webWorker && this.messageHandler) {
+            this.webWorker.removeEventListener('message', this.messageHandler);
+            this.messageHandler = null;
+        }
     }
 
     castSpell(command, dirX=0, dirY=0) {
@@ -46,7 +97,7 @@ export class LevelLogic {
                 this.board.playerStrength = 2;
                 this.board.isEnraged=true;
                 this.board.enragedMoves=5;
-                //adding enraged animation
+                this.playerImg.src=  WIZARD_IMAGES[+this.isEnraged]['base'];
                 break;
             default:
                 console.error("Invalid spell type"); // invalid spell type
@@ -62,13 +113,16 @@ export class LevelLogic {
 }
 
 // a class that handles board management
-export class GameBoard {
-    constructor(boardSize, cellSize) {
+class GameBoard {
+    constructor(boardSize, cellSize, Editor=false) {
 
         this.boardSize = boardSize;
         this.cellSize = cellSize;
         this.boardWidth = boardSize * cellSize;
-        this.boardStartX = (window.innerWidth - this.boardWidth) / 2;
+        if(Editor){
+            this.boardStartX = (window.innerWidth - this.boardWidth) / 2;
+        } 
+        else this.boardStartX = (window.innerWidth - this.boardWidth) / 4;
         this.boardStartY = (window.innerHeight - this.boardWidth) / 2;
 
         this.frontBoardState = {};     // maps index to ID for objects in front (like player, boxes, fireballs)
@@ -79,14 +133,16 @@ export class GameBoard {
 
         this.id = 2; // next id to be used for objects
 
+        this.parentLogic = null;
+
         this.player = document.getElementsByClassName("player")[0];
         this.initPlayer(); // initialize the player
         this.playerImg = document.getElementsByClassName("playerImg")[0];
+        this.isEnraged=false;
 
         this.playerStrength = 1; // player strength, used for pushing objects
         this.playerDirX = 1; // player direction, used for spellcasting
         this.playerDirY = 0; // player direction, used for spellcasting
-        this.isEnraged=false;
         this.enragedMoves=0;
 
         this.numberOfPairs=0;
@@ -101,7 +157,7 @@ export class GameBoard {
         const index=GameBoard.twoDIndexTo1d(this.playerGridY, this.boardSize, this.playerGridX);
         this.frontBoardState[index] = 1;
         this.backBoardState[index] = 0;
-        this.frontIdToObjects[1] = this.playerM // map the player to the id 1
+        this.frontIdToObjects[1] = this.player // map the player to the id 1
         // Now center player in the middle cell
         this.player.style.transform = "scale(0.8)";
         this.player.style.width = this.cellSize + "px";
@@ -137,17 +193,15 @@ export class GameBoard {
             }
         }
     }
-    clearboard(){
-        for (const index in this.frontBoardState) {
-            const id = this.frontBoardState[index];
-            if(id==0 || id==1) continue;
-            this.removeObject(id,0);
-        }        
-        for (const index in this.backBoardState) {
-            const id = this.backBoardState[index ];
-            if(id==0) continue;
-            this.removeObject(id,1);
-        }      
+
+    static clearBoard(){
+        console.log("%c[GameBoard.clearBoard] --- Starting Board Clear (Nuking All Game Object DIVs) ---", 'color: red; font-weight: bold;');
+
+        // Nuke all elements that were part of a GameObject
+        document.querySelectorAll('.game-object').forEach(el => {
+            // console.log(`[GameBoard.clearBoard - Nuke] Removing element with ID: ${el.id}`); 
+            el.remove();
+        });
     }
 
     checkMove(startX, startY, dirX, dirY) {
@@ -158,7 +212,16 @@ export class GameBoard {
             return false; // out of bounds
         }
         const nextIndex = GameBoard.twoDIndexTo1d(nextY, this.boardSize, nextX);
-        if (this.frontBoardState[nextIndex] === 0 ) return true; // empty cell
+        const objId = this.frontBoardState[nextIndex];
+        if (objId === 0) return true; // empty cell
+        const obj = this.frontIdToObjects[objId];
+        if (obj instanceof Objects.Flag) {
+            this.removeObject(objId);
+            if (this.parentLogic && typeof this.parentLogic.onLevelComplete === 'function') {
+                this.parentLogic.onLevelComplete();
+            }
+            return true;
+        }
         return this.handleCollision(this.playerGridX, this.playerGridY, dirX, dirY); // check for collision
     }
 
@@ -232,20 +295,21 @@ export class GameBoard {
     }
 
     changeDirection(dirX, dirY) {
+        this.playerDirX = dirX; // set the direction
+        this.playerDirY = dirY; // set the direction
+
         if (dirX !== 0) {
-            this.playerImg.src = "images/wizard_side.png"; // facing to the side
+            this.playerImg.src = WIZARD_IMAGES[+this.isEnraged]['side']; // facing to the side
             // if facing to the left, flip the image
             this.playerImg.style.transform = "scaleX("+dirX+")"; // facing right
         }
         else if (dirY < 0) {
-            this.playerImg.src = "images/wizard_up.png"; // facing up
+            this.playerImg.src = WIZARD_IMAGES[+this.isEnraged]['up']; // facing up
         } 
         else {
-            this.playerImg.src = "images/wizard.png"; // facing down
+            this.playerImg.src = WIZARD_IMAGES[+this.isEnraged]['base']; // facing down
             this.playerImg.style.transform = "scale(0.8)"; // facing down
         }
-        this.playerDirX = dirX; // set the direction
-        this.playerDirY = dirY; // set the direction
     }
 
     UpdateButtonIfPlayerMovment(dirX, dirY){
@@ -331,6 +395,9 @@ export class GameBoard {
         const id = this.nextId(); // get the next id
         this.frontBoardState[index] = id; // set the cell to the id
         switch (type) {
+            case "flag":
+                this.frontIdToObjects[id] = new Objects.Flag(id, x, y, this.cellSize); // create a new flag object
+                break;
             case "wall":
                 this.frontIdToObjects[id] = new Objects.Wall(id, x, y, this.cellSize); // create a new wall object
                 break;
@@ -387,27 +454,4 @@ export class GameBoard {
 
 }
 
-// init the game
-// const boardSize = 10; // size of the board
-// const cellSize = Math.min(window.innerWidth, window.innerHeight) / boardSize;
-// let lvLogic = new LevelLogic(boardSize, cellSize, 20);// Mana=20
-// lvLogic.addKeyboardListener(); // add the keyboard listener to the logic class
-
-// lvLogic.board.addObject("wall", 9, 2); 
-// lvLogic.board.addObject("wall", 7, 2); 
-// lvLogic.board.addObject("wall", 7, 1); 
-// lvLogic.board.addObject("wall", 9, 1); 
-// lvLogic.board.addObject("wall", 7, 0); 
-// lvLogic.board.addObject("wall", 9, 0);
-// lvLogic.board.addObject("buttonAndDoor", 8, 2,0,0, 9,5);
-
-// lvLogic.board.addObject("buttonAndDoor", 4, 2,0,0, 7,5);
-
-// lvLogic.board.addObject("metal_box", 8, 3); 
-
-// lvLogic.board.addObject("wall", 4, 4); 
-// lvLogic.board.addObject("wooden_box", 3, 2);
-// lvLogic.board.addObject("wooden_box", 5, 2); 
-// lvLogic.board.addObject("wooden_box", 7, 7); 
-// lvLogic.board.addObject("metal_box", 2, 2); 
-// lvLogic.board.addObject("wall", 6, 2); 
+export {GameBoard,LevelLogic}

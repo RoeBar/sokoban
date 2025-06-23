@@ -14,7 +14,7 @@ function recordToBuffer() {
       rate: "16000",
       channels: "1",
       fileType: "wav",      
-      exitOnSilence: 1.2,   // <— latency knob #1 - set needed silence duration to stop record.
+      exitOnSilence: 1,   // <— latency knob #1 - set needed silence duration to stop record.
       silence: "1 0.05 2%", // <— latency knob #2 - set noise dB which sox consider silence.
     });
 
