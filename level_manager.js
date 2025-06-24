@@ -21,6 +21,7 @@ function loadLevel(index) {
     // Clean up existing elements
     if(lvLogic) lvLogic.removeListeners();
     lvLogic = Game.loadLevelFromJson(json, worker);
+    Modules.addListenerToGame(lvLogic); // add the listener to the game logic
     lvLogic.addKeyboardListener();
     updateTitle(key[6]);
     lvLogic.onLevelComplete = showPopup;
@@ -81,7 +82,7 @@ function showPopup() {
     restartBtn.style.left = "40%";
     restartBtn.addEventListener('click', () => {
         popup.remove();
-        lvLogic = loadLevel(currentLevelIndex, webWorker);
+        lvLogic = loadLevel(currentLevelIndex);
     });
     popup.appendChild(restartBtn);
 

@@ -17,29 +17,25 @@ export function initWorker(workerPath) {
 }
 
 export function addListenerToGame(game) {
-    // listen for messages from the web worker
-    game.webWorker.addEventListener("message", (event) => {
-        const data = event.data; // get the data from the event
+    // define the handler as a named function and store it in the game object
+    game.messageHandler = function(event) {
+        const data = event.data;
 
-        const regex_pattern = "\\{\\s*\"spell\":\\s*\"([a-zA-Z]+)\"\\s*\\}"; // regex pattern to match the spell JSON format
+        const regex_pattern = "\\{\\s*\"spell\":\\s*\"([a-zA-Z]+)\"\\s*\\}";
         const regex = new RegExp(regex_pattern);
-        const spellMatch = data.match(regex); // match the data against the regex pattern
+        const spellMatch = data.match(regex);
 
         if (spellMatch) {
-            const spell = spellMatch[1]; // get the spell from the match
-            console.log("Spell detected:", spell); // log the detected spell
-            game.castSpell(spell, game.board.playerDirX, game.board.playerDirY); // cast the spell in the game logic
-            game.isSpellCasting = false
+            const spell = spellMatch[1];
+            console.log("Spell detected:", spell);
+            game.castSpell(spell, game.board.playerDirX, game.board.playerDirY);
+            game.isSpellCasting = false;
         } else {
             console.log("No valid spell detected in the message.");
         }
-    });
-}
+    };
 
-export function removeListenerToGame(game) {
-    if (game.webWorker) {
-        game.webWorker.removeEventListener("message", game.messageHandler);
-    }
+    game.webWorker.addEventListener("message", game.messageHandler);
 }
 
 export function createMenu() {

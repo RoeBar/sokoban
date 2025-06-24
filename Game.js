@@ -47,6 +47,7 @@ class LevelLogic {
 
         this.isSpellCasting= false;
         this.webWorker= worker; // web worker for spell detection
+        this.messageHandler; // will be added in the module.js file
     }
 
     handleKeyDown(event) {
@@ -74,10 +75,10 @@ class LevelLogic {
             this.keyboardHandler = null;
         }
 
-        // Remove web worker message listener if present
         if (this.webWorker && this.messageHandler) {
-            this.webWorker.removeEventListener('message', this.messageHandler);
+            this.webWorker.removeEventListener("message", this.messageHandler);
             this.messageHandler = null;
+            console.log("Removed message handler from web worker.");
         }
     }
 
@@ -97,7 +98,7 @@ class LevelLogic {
                 this.board.playerStrength = 2;
                 this.board.isEnraged=true;
                 this.board.enragedMoves=5;
-                this.playerImg.src=  WIZARD_IMAGES[+this.isEnraged]['base'];
+                this.board.playerImg.src = WIZARD_IMAGES[+this.board.isEnraged]['base'];
                 break;
             default:
                 console.error("Invalid spell type"); // invalid spell type
