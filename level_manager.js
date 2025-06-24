@@ -69,7 +69,7 @@ function showPopup() {
         nextBtn.style.left = "40%";
         nextBtn.addEventListener('click', () => {
             popup.remove();
-            lvLogic = loadLevel(nextIndex, webWorker);
+            lvLogic = loadLevel(nextIndex);
         });
         popup.appendChild(nextBtn);
     }
