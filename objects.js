@@ -96,9 +96,11 @@ export class Button extends Standable {
         this.pressed= false;
         this.pairNumber=pairNumber;
 
-        this.img.style.transform = "scale(1)";
+        this.img.style.transform = "scale(0.8)";
         this.element.style.width = cellSize + "px";
         this.element.style.height = cellSize + "px";
+        this.element.style.left = (x * cellSize + cellSize * 0.1) + "px"; // center the button in the cell
+        this.element.style.top = (y * cellSize + cellSize * 0.1) + "px"; // center the button in the cell
         this.element.style.position = "absolute";
         this.determineButtonSprite();
     }
