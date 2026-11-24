@@ -1,0 +1,5 @@
+# Secrets: keep your real key only in your local .env
+.env
+
+# Dependencies
+node_modules/
